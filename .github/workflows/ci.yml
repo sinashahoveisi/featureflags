@@ -267,18 +267,32 @@ jobs:
     - name: Create .env file for integration tests
       if: steps.build.outcome == 'success'
       run: |
+        # Find an available port for testing
+        TEST_PORT=9080
+        while netstat -tuln | grep -q ":$TEST_PORT "; do
+          TEST_PORT=$((TEST_PORT + 1))
+        done
+        echo "🔍 Using port $TEST_PORT for integration tests"
+        
         cat > .env << EOF
         POSTGRES_HOST=db
         POSTGRES_USER=featureflags
         POSTGRES_PASSWORD=featureflags
         POSTGRES_DB=featureflags
-        APP_PORT=8080
+        APP_PORT=$TEST_PORT
         SWAGGER_ENABLED=true
         EOF
+        
+        # Store the port for later steps
+        echo "TEST_PORT=$TEST_PORT" >> $GITHUB_ENV
     
     - name: Start services with Docker Compose
       if: steps.build.outcome == 'success'
       run: |
+        # Clean up any existing containers first
+        echo "🧹 Cleaning up any existing containers..."
+        docker compose down -v 2>/dev/null || true
+        
         # Update docker compose to use the built image
         docker tag featureflags:latest featureflags-app:latest
         
@@ -286,8 +300,17 @@ jobs:
         echo "📋 Environment variables:"
         cat .env
         
+        # Check if port is available
+        echo "🔍 Checking port availability..."
+        if netstat -tuln | grep -q ":$TEST_PORT "; then
+          echo "⚠️  Port $TEST_PORT is in use, attempting to free it..."
+          # Kill any process using the port
+          sudo lsof -ti:$TEST_PORT | xargs -r sudo kill -9 2>/dev/null || true
+          sleep 2
+        fi
+        
         # Start services
-        echo "🚀 Starting services..."
+        echo "🚀 Starting services on port $TEST_PORT..."
         docker compose up -d
         
         # Show running containers
@@ -304,9 +327,9 @@ jobs:
         docker compose logs app
         
         # Wait for health endpoint
-        echo "🔍 Testing health endpoint..."
+        echo "🔍 Testing health endpoint on port $TEST_PORT..."
         for i in {1..30}; do
-          if curl -f http://localhost:8080/health; then
+          if curl -f http://localhost:$TEST_PORT/health; then
             echo "✅ Services are ready!"
             break
           fi
@@ -320,6 +343,8 @@ jobs:
             docker compose logs app
             echo "📋 DB logs:"
             docker compose logs db
+            echo "📋 Port status:"
+            netstat -tuln | grep :$TEST_PORT || echo "No process listening on port $TEST_PORT"
             exit 1
           fi
         done
@@ -327,23 +352,23 @@ jobs:
     - name: Run integration tests
       if: steps.build.outcome == 'success'
       run: |
-        echo "🧪 Running integration tests..."
+        echo "🧪 Running integration tests on port $TEST_PORT..."
         
         # Test health endpoint
         echo "Testing health endpoint..."
-        curl -f http://localhost:8080/health | jq .
+        curl -f http://localhost:$TEST_PORT/health | jq .
         
         # Test API endpoints
         echo "Testing flags endpoint..."
-        curl -f http://localhost:8080/api/v1/flags | jq .
+        curl -f http://localhost:$TEST_PORT/api/v1/flags | jq .
         
         # Test Swagger (if enabled)
         echo "Testing Swagger UI..."
-        curl -f http://localhost:8080/swagger/index.html > /dev/null && echo "✅ Swagger UI accessible" || echo "ℹ️  Swagger may be disabled"
+        curl -f http://localhost:$TEST_PORT/swagger/index.html > /dev/null && echo "✅ Swagger UI accessible" || echo "ℹ️  Swagger may be disabled"
         
         # Test flag creation and scenarios
         echo "Testing flag creation..."
-        FLAG_RESPONSE=$(curl -X POST http://localhost:8080/api/v1/flags \
+        FLAG_RESPONSE=$(curl -X POST http://localhost:$TEST_PORT/api/v1/flags \
           -H "Content-Type: application/json" \
           -H "X-Actor: github-ci" \
           -d '{"name": "ci_test_flag"}')
@@ -353,14 +378,14 @@ jobs:
         
         # Test flag toggle
         echo "Testing flag toggle..."
-        curl -X POST http://localhost:8080/api/v1/flags/$FLAG_ID/toggle \
+        curl -X POST http://localhost:$TEST_PORT/api/v1/flags/$FLAG_ID/toggle \
           -H "Content-Type: application/json" \
           -H "X-Actor: github-ci" \
           -d '{"enable": true, "reason": "Integration test"}' | jq .
         
         # Test audit logs
         echo "Testing audit logs..."
-        curl -f http://localhost:8080/api/v1/flags/$FLAG_ID/audit | jq .
+        curl -f http://localhost:$TEST_PORT/api/v1/flags/$FLAG_ID/audit | jq .
         
         echo "✅ All integration tests passed!"
     
