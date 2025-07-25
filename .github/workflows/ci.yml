@@ -264,18 +264,65 @@ jobs:
         cache-from: type=gha
         load: true
     
+    - name: Create .env file for integration tests
+      if: steps.build.outcome == 'success'
+      run: |
+        cat > .env << EOF
+        POSTGRES_HOST=db
+        POSTGRES_USER=featureflags
+        POSTGRES_PASSWORD=featureflags
+        POSTGRES_DB=featureflags
+        APP_PORT=8080
+        SWAGGER_ENABLED=true
+        EOF
+    
     - name: Start services with Docker Compose
       if: steps.build.outcome == 'success'
       run: |
         # Update docker compose to use the built image
         docker tag featureflags:latest featureflags-app:latest
+        
+        # Show environment variables for debugging
+        echo "📋 Environment variables:"
+        cat .env
+        
+        # Start services
+        echo "🚀 Starting services..."
         docker compose up -d
+        
+        # Show running containers
+        echo "📊 Running containers:"
+        docker compose ps
     
     - name: Wait for services
       if: steps.build.outcome == 'success'
       run: |
-        echo "Waiting for services to be ready..."
-        timeout 60 bash -c 'until curl -f http://localhost:8080/health; do sleep 2; done'
+        echo "⏳ Waiting for services to be ready..."
+        
+        # Show logs for debugging if needed
+        echo "📋 Checking service logs..."
+        docker compose logs app
+        
+        # Wait for health endpoint
+        echo "🔍 Testing health endpoint..."
+        for i in {1..30}; do
+          if curl -f http://localhost:8080/health; then
+            echo "✅ Services are ready!"
+            break
+          fi
+          echo "⏳ Attempt $i/30 - waiting 2 seconds..."
+          sleep 2
+          if [ $i -eq 30 ]; then
+            echo "❌ Services failed to start within 60 seconds"
+            echo "📋 Final container status:"
+            docker compose ps
+            echo "📋 App logs:"
+            docker compose logs app
+            echo "📋 DB logs:"
+            docker compose logs db
+            exit 1
+          fi
+        done
     
     - name: Run integration tests
       if: steps.build.outcome == 'success'
