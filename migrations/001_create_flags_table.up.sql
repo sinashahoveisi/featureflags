@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS flags (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'disabled',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_flags_name ON flags(name);
+CREATE INDEX IF NOT EXISTS idx_flags_status ON flags(status); 

@@ -1,0 +1,88 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "${APP_PORT}:8080"
+    environment:
+      - POSTGRES_HOST=db
+    env_file:
+      - .env
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - TEST_DB_HOST=db
+      - TEST_DB_PORT=5432
+      - TEST_DB_USER=${POSTGRES_USER}
+      - TEST_DB_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - TEST_DB_NAME=${POSTGRES_DB}_test
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: ["./scripts/test.sh"]
+
+  scenario-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    environment:
+      - TEST_DB_HOST=db
+      - TEST_DB_PORT=5432
+      - TEST_DB_USER=${POSTGRES_USER}
+      - TEST_DB_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - TEST_DB_NAME=${POSTGRES_DB}_test
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: ["./scripts/run-scenario-tests.sh"]
+
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - HTTP_SERVER_PORT=8080
+      - LOG_LEVEL=debug
+      - GO_ENV=development
+      - SWAGGER_ENABLED=true
+    depends_on:
+      - db
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - .:/app
+      - /app/tmp  # Anonymous volume for tmp directory to avoid permission issues
+    working_dir: /app
+
+  db:
+    image: docker.arvancloud.ir/postgres:15
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata: 

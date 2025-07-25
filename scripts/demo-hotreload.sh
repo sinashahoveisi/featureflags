@@ -1,0 +1,53 @@
+#!/bin/sh
+
+echo "🔥 Hot Reload Demo for FeatureFlags Development"
+echo "=============================================="
+
+echo ""
+echo "This demo shows how the development environment automatically reloads"
+echo "when you make changes to your Go code."
+echo ""
+
+echo "📝 Instructions:"
+echo "1. Start the development environment:"
+echo "   make dev"
+echo ""
+echo "2. In another terminal, make changes to any .go file"
+echo "3. Watch the development console - it will automatically:"
+echo "   - Detect the file change"
+echo "   - Rebuild the application"
+echo "   - Restart the server"
+echo ""
+
+echo "🎬 Example changes you can try:"
+echo ""
+echo "• Edit cmd/main.go and change a log message"
+echo "• Add a new endpoint in controller/flag_controller.go"
+echo "• Modify the response format in service/flag_service.go"
+echo "• Update validation rules in validator/flag_validator.go"
+echo ""
+
+echo "🔍 What you'll see in the development console:"
+echo "  [Air] watching..."
+echo "  [Air] building..."
+echo "  [Air] running..."
+echo ""
+
+echo "🌐 Access your application at:"
+echo "  • API: http://localhost:8080"
+echo "  • Swagger: http://localhost:8080/swagger/index.html"
+echo "  • Health: http://localhost:8080/health"
+echo ""
+
+echo "⚡ Features of the development environment:"
+echo "  ✅ Hot reload on file changes"
+echo "  ✅ Debug logging enabled"
+echo "  ✅ Swagger documentation enabled"
+echo "  ✅ PostgreSQL database included"
+echo "  ✅ Live code mounting"
+echo "  ✅ Automatic dependency installation"
+echo ""
+
+echo "🛑 To stop the development environment:"
+echo "   Press Ctrl+C in the terminal running 'make dev'"
+echo "   Or run: make dev-stop" 

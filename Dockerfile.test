@@ -1,0 +1,27 @@
+# Test Dockerfile - includes Go runtime for running tests
+FROM docker.arvancloud.ir/golang:1.23-alpine
+
+# Install system dependencies
+RUN apk --no-cache add git postgresql-client
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod files first for better caching
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Make scripts executable
+RUN chmod +x ./scripts/*.sh
+
+# Set environment variables for testing
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+
+# Default command
+CMD ["./scripts/test.sh"] 

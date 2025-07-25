@@ -1,0 +1,44 @@
+# Ignore version control
+.git
+
+# Ignore local env files
+.env
+*.env
+
+# Ignore test and coverage files (keep for test dockerfile)
+# tests/
+*.test*
+coverage/
+coverage.out
+coverage.html
+
+# Ignore editor and OS files
+*.swp
+*.swo
+*.DS_Store
+.idea/
+.vscode/
+
+# Ignore build artifacts
+*.out
+*.exe
+*.log
+main
+featureflags
+
+# Ignore development files
+.air.toml
+build-errors.log
+tmp/
+
+# Ignore documentation
+*.md
+docs/
+
+# Ignore Docker files (except the one being built)
+Dockerfile*
+!Dockerfile
+docker-compose.yml
+
+# Ignore node modules
+node_modules/ 
