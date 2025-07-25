@@ -127,6 +127,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
+      attestations: write
     
     steps:
     - name: Checkout code
@@ -167,6 +169,8 @@ jobs:
     
     - name: Generate artifact attestation
       uses: actions/attest-build-provenance@v1
+      continue-on-error: true
+      if: steps.push.outcome == 'success'
       with:
         subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         subject-digest: ${{ steps.push.outputs.digest }}
@@ -263,9 +267,9 @@ jobs:
     - name: Start services with Docker Compose
       if: steps.build.outcome == 'success'
       run: |
-        # Update docker-compose to use the built image
+        # Update docker compose to use the built image
         docker tag featureflags:latest featureflags-app:latest
-        docker-compose up -d
+        docker compose up -d
     
     - name: Wait for services
       if: steps.build.outcome == 'success'
@@ -315,7 +319,7 @@ jobs:
     
     - name: Stop services
       if: always()
-      run: docker-compose down -v
+      run: docker compose down -v
 
   deploy-staging:
     name: Deploy to Staging
