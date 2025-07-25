@@ -293,6 +293,13 @@ jobs:
         echo "🧹 Cleaning up any existing containers..."
         docker compose down -v 2>/dev/null || true
         
+        # Also clean up any containers that might be running from previous runs
+        docker container prune -f 2>/dev/null || true
+        
+        # Show what's currently running
+        echo "📋 Current Docker processes:"
+        docker ps --format "table {{.Names}}\t{{.Ports}}\t{{.Status}}" || true
+        
         # Update docker compose to use the built image
         docker tag featureflags:latest featureflags-app:latest
         
@@ -309,13 +316,13 @@ jobs:
           sleep 2
         fi
         
-        # Start services
-        echo "🚀 Starting services on port $TEST_PORT..."
-        docker compose up -d
+        # Start only the services needed for integration testing (app and db)
+        echo "🚀 Starting integration test services on port $TEST_PORT..."
+        docker compose up -d app db
         
         # Show running containers
-        echo "📊 Running containers:"
-        docker compose ps
+        echo "📊 Running integration test containers:"
+        docker compose ps app db
     
     - name: Wait for services
       if: steps.build.outcome == 'success'
@@ -389,9 +396,12 @@ jobs:
         
         echo "✅ All integration tests passed!"
     
-    - name: Stop services
+    - name: Stop integration test services
       if: always()
-      run: docker compose down -v
+      run: |
+        echo "🧹 Stopping integration test services..."
+        docker compose down -v
+        docker container prune -f 2>/dev/null || true
 
   deploy-staging:
     name: Deploy to Staging
