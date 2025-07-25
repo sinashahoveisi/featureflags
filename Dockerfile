@@ -13,6 +13,10 @@ RUN go mod download
 # Copy source code
 COPY . .
 
+# Install swag CLI tool and generate Swagger docs
+RUN go install github.com/swaggo/swag/cmd/swag@latest
+RUN swag init -g cmd/main.go -o docs
+
 # Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o featureflags ./cmd/main.go
 
