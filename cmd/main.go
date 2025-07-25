@@ -123,20 +123,35 @@ func connectDB(cfg *config.Config) (*sqlx.DB, error) {
 		cfg.Database.SSLMode,
 	)
 
-	db, err := sqlx.Connect("postgres", connStr)
+	var db *sqlx.DB
+	var err error
+
+	// Retry connection up to 30 times with 1 second delay
+	for i := 0; i < 30; i++ {
+		db, err = sqlx.Connect("postgres", connStr)
+		if err == nil {
+			// Test connection
+			if err = db.Ping(); err == nil {
+				break
+			}
+			db.Close()
+		}
+		
+		if i == 0 {
+			fmt.Printf("Waiting for database to be ready...\n")
+		}
+		fmt.Printf("Database connection attempt %d/30 failed: %v\n", i+1, err)
+		time.Sleep(1 * time.Second)
+	}
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to database: %w", err)
+		return nil, fmt.Errorf("failed to connect to database after 30 attempts: %w", err)
 	}
 
 	// Configure connection pool
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
-
-	// Test connection
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping database: %w", err)
-	}
 
 	return db, nil
 } 

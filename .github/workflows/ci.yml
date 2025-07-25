@@ -316,9 +316,32 @@ jobs:
           sleep 2
         fi
         
-        # Start only the services needed for integration testing (app and db)
-        echo "🚀 Starting integration test services on port $TEST_PORT..."
-        docker compose up -d app db
+        # Start database first and wait for it to be healthy
+        echo "🚀 Starting database service..."
+        docker compose up -d db
+        
+        # Wait for database to be healthy
+        echo "⏳ Waiting for database to be healthy..."
+        for i in {1..30}; do
+          if docker compose ps db | grep -q "healthy"; then
+            echo "✅ Database is healthy!"
+            break
+          fi
+          echo "⏳ Database health check $i/30 - waiting 2 seconds..."
+          sleep 2
+          if [ $i -eq 30 ]; then
+            echo "❌ Database failed to become healthy within 60 seconds"
+            echo "📋 Database status:"
+            docker compose ps db
+            echo "📋 Database logs:"
+            docker compose logs db
+            exit 1
+          fi
+        done
+        
+        # Now start the application
+        echo "🚀 Starting application service on port $TEST_PORT..."
+        docker compose up -d app
         
         # Show running containers
         echo "📊 Running integration test containers:"
