@@ -343,9 +343,17 @@ jobs:
         echo "🚀 Starting application service on port $TEST_PORT..."
         docker compose up -d app
         
+        # Wait a moment for the application to start
+        echo "⏳ Giving application a moment to start..."
+        sleep 3
+        
         # Show running containers
         echo "📊 Running integration test containers:"
         docker compose ps app db
+        
+        # Show initial application logs
+        echo "📋 Initial application logs:"
+        docker compose logs --tail=20 app
     
     - name: Wait for services
       if: steps.build.outcome == 'success'
@@ -356,27 +364,64 @@ jobs:
         echo "📋 Checking service logs..."
         docker compose logs app
         
+        # First, test basic connectivity
+        echo "🔍 Testing basic connectivity to port $TEST_PORT..."
+        if nc -z localhost $TEST_PORT; then
+          echo "✅ Port $TEST_PORT is reachable"
+        else
+          echo "❌ Port $TEST_PORT is not reachable"
+          echo "📋 Current port status:"
+          netstat -tuln | grep :$TEST_PORT || echo "No process listening on port $TEST_PORT"
+        fi
+        
         # Wait for health endpoint
         echo "🔍 Testing health endpoint on port $TEST_PORT..."
         for i in {1..30}; do
-          if curl -f http://localhost:$TEST_PORT/health; then
+          echo "⏳ Attempt $i/30 - testing health endpoint..."
+          
+          # Try to get more detailed information about the curl failure
+          if curl -f -v http://localhost:$TEST_PORT/health 2>&1; then
             echo "✅ Services are ready!"
             break
+          else
+            CURL_EXIT_CODE=$?
+            echo "❌ Curl failed with exit code: $CURL_EXIT_CODE"
+            
+            # Check if the port is actually listening
+            if netstat -tuln | grep -q ":$TEST_PORT "; then
+              echo "✅ Port $TEST_PORT is listening"
+            else
+              echo "❌ Port $TEST_PORT is not listening"
+            fi
+            
+            # Check container status
+            echo "📋 Container status:"
+            docker compose ps app
+            
+            # Show recent app logs
+            echo "📋 Recent app logs:"
+            docker compose logs --tail=10 app
           fi
-          echo "⏳ Attempt $i/30 - waiting 2 seconds..."
-          sleep 2
+          
           if [ $i -eq 30 ]; then
             echo "❌ Services failed to start within 60 seconds"
             echo "📋 Final container status:"
             docker compose ps
-            echo "📋 App logs:"
+            echo "📋 Full app logs:"
             docker compose logs app
             echo "📋 DB logs:"
             docker compose logs db
             echo "📋 Port status:"
             netstat -tuln | grep :$TEST_PORT || echo "No process listening on port $TEST_PORT"
+            
+            # Try one more direct test
+            echo "📋 Direct connectivity test:"
+            telnet localhost $TEST_PORT < /dev/null || echo "Telnet connection failed"
+            
             exit 1
           fi
+          
+          sleep 2
         done
     
     - name: Run integration tests
