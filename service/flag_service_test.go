@@ -133,11 +133,11 @@ func TestFlagService_EnableFlag(t *testing.T) {
 
 	t.Run("enable flag with satisfied dependencies", func(t *testing.T) {
 		// Create enabled dependencies
-		dep1 := testDB.CreateTestFlag(t, "dep1", entity.FlagEnabled)
-		dep2 := testDB.CreateTestFlag(t, "dep2", entity.FlagEnabled)
+		dep1 := testDB.CreateTestFlag(t, "enable_dep1", entity.FlagEnabled)
+		dep2 := testDB.CreateTestFlag(t, "enable_dep2", entity.FlagEnabled)
 		
 		// Create dependent flag
-		flag := testDB.CreateTestFlagWithDependencies(t, "dependent", entity.FlagDisabled, []int64{dep1.ID, dep2.ID})
+		flag := testDB.CreateTestFlagWithDependencies(t, "dependent_satisfied", entity.FlagDisabled, []int64{dep1.ID, dep2.ID})
 
 		err := service.EnableFlag(context.Background(), flag.ID, "test_user", "dependencies satisfied")
 		
@@ -151,7 +151,7 @@ func TestFlagService_EnableFlag(t *testing.T) {
 		dep2 := testDB.CreateTestFlag(t, "disabled_dep", entity.FlagDisabled)
 		
 		// Create dependent flag
-		flag := testDB.CreateTestFlagWithDependencies(t, "dependent", entity.FlagDisabled, []int64{dep1.ID, dep2.ID})
+		flag := testDB.CreateTestFlagWithDependencies(t, "dependent_missing", entity.FlagDisabled, []int64{dep1.ID, dep2.ID})
 
 		err := service.EnableFlag(context.Background(), flag.ID, "test_user", "should fail")
 		
@@ -183,7 +183,7 @@ func TestFlagService_DisableFlag(t *testing.T) {
 	service := NewFlagService(flagRepo, auditRepo, log)
 
 	t.Run("disable flag without dependents", func(t *testing.T) {
-		flag := testDB.CreateTestFlag(t, "simple_flag", entity.FlagEnabled)
+		flag := testDB.CreateTestFlag(t, "disable_simple_flag", entity.FlagEnabled)
 
 		err := service.DisableFlag(context.Background(), flag.ID, "test_user", "testing disable")
 		
@@ -194,9 +194,9 @@ func TestFlagService_DisableFlag(t *testing.T) {
 
 	t.Run("disable flag with cascade to dependents", func(t *testing.T) {
 		// Create dependency chain: dep -> flag1 -> flag2
-		dep := testDB.CreateTestFlag(t, "dependency", entity.FlagEnabled)
-		flag1 := testDB.CreateTestFlagWithDependencies(t, "flag1", entity.FlagEnabled, []int64{dep.ID})
-		flag2 := testDB.CreateTestFlagWithDependencies(t, "flag2", entity.FlagEnabled, []int64{flag1.ID})
+		dep := testDB.CreateTestFlag(t, "cascade_dependency", entity.FlagEnabled)
+		flag1 := testDB.CreateTestFlagWithDependencies(t, "cascade_flag1", entity.FlagEnabled, []int64{dep.ID})
+		flag2 := testDB.CreateTestFlagWithDependencies(t, "cascade_flag2", entity.FlagEnabled, []int64{flag1.ID})
 
 		// Disable the root dependency
 		err := service.DisableFlag(context.Background(), dep.ID, "test_user", "cascade test")
@@ -293,8 +293,8 @@ func TestFlagService_ListFlags(t *testing.T) {
 
 	t.Run("list flags", func(t *testing.T) {
 		// Create test flags
-		flag1 := testDB.CreateTestFlag(t, "flag1", entity.FlagEnabled)
-		flag2 := testDB.CreateTestFlag(t, "flag2", entity.FlagDisabled)
+		flag1 := testDB.CreateTestFlag(t, "list_flag1", entity.FlagEnabled)
+		flag2 := testDB.CreateTestFlag(t, "list_flag2", entity.FlagDisabled)
 		
 		flags, err := service.ListFlags(context.Background())
 		
@@ -310,8 +310,8 @@ func TestFlagService_ListFlags(t *testing.T) {
 		}
 		assert.True(t, flagIDs[flag1.ID])
 		assert.True(t, flagIDs[flag2.ID])
-		assert.True(t, flagNames["flag1"])
-		assert.True(t, flagNames["flag2"])
+		assert.True(t, flagNames["list_flag1"])
+		assert.True(t, flagNames["list_flag2"])
 	})
 }
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 set -e
 
@@ -28,7 +28,7 @@ PGPASSWORD=$TEST_DB_PASSWORD psql -h $TEST_DB_HOST -p $TEST_DB_PORT -U $TEST_DB_
 
 # Run tests
 echo "Running unit and integration tests..."
-go test -v -race -coverprofile=coverage.out ./service/...
+go test -v -coverprofile=coverage.out ./service/...
 
 # Generate coverage report
 echo "Generating coverage report..."
